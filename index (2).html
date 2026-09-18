@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>La Balanza Distributiva - Juego de Ecuaciones</title>
+<style>
+/* =====================================================================
+   VARIABLES DE TEMA Y CONFIGURACIÓN VISUAL
+   ===================================================================== */
+:root{
+  --bg:#f2f6fb; --panel:#ffffff; --texto:#182233; --texto-suave:#5a6b82;
+  --primario:#5b3df0; --primario-osc:#3f28b8; --secundario:#00b8a9;
+  --exito:#1f9d55; --exito-bg:#e6f8ec; --error:#e0473f; --error-bg:#fdeceb;
+  --acento:#ff9f1c; --borde:#dbe3ef; --sombra:0 4px 14px rgba(30,40,80,.10);
+  --radio:16px; --fuente:18px; --foco:#ff6f00; --toque:44px;
+}
+[data-tema="oscuro"]{
+  --bg:#0f1420; --panel:#1a2233; --texto:#eef2fa; --texto-suave:#aab6c9;
+  --primario:#8b7bff; --primario-osc:#6a58e0; --secundario:#3fd9c8;
+  --exito:#5be08a; --exito-bg:#122a1c; --error:#ff8a80; --error-bg:#331616;
+  --acento:#ffc266; --borde:#2d3850; --sombra:0 4px 16px rgba(0,0,0,.5); --foco:#ffcc66;
+}
+[data-tema="contraste"]{
+  --bg:#000; --panel:#000; --texto:#fff; --texto-suave:#fff;
+  --primario:#ff0; --primario-osc:#ff0; --secundario:#0ff;
+  --exito:#0f0; --exito-bg:#001a00; --error:#f55; --error-bg:#220000;
+  --acento:#0ff; --borde:#fff; --sombra:none; --foco:#0ff;
+}
+[data-movimiento="reducido"] *{ transition:none !important; animation:none !important; }
+*{box-sizing:border-box;}
+html{font-size:var(--fuente);}
+body{
+  margin:0; background:var(--bg); color:var(--texto);
+  font-family:"Segoe UI",Verdana,Arial,sans-serif; line-height:1.55;
+  min-height:100vh; transition:background .2s,color .2s;
+}
+[data-tema="contraste"] *{ border-color:#fff !important; }
+button,input,select{ font-family:inherit; }
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,
+[tabindex]:focus-visible,.pieza:focus-visible,.tarjeta:focus-visible{
+  outline:4px solid var(--foco); outline-offset:2px;
+}
+.envolver{ max-width:960px; margin:0 auto; padding:10px 14px 60px; }
+header.top{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:10px; padding:12px 16px; background:var(--panel); box-shadow:var(--sombra);
+  border-radius:0 0 var(--radio) var(--radio); position:sticky; top:0; z-index:20;
+}
+header.top h1{ font-size:1.25rem; margin:0; color:var(--primario); }
+header.top p{ margin:2px 0 0; font-size:.8rem; color:var(--texto-suave); }
+.controles-top{ display:flex; flex-wrap:wrap; gap:6px; }
+button{
+  cursor:pointer; border:2px solid var(--primario); background:var(--primario); color:#fff;
+  padding:10px 14px; border-radius:12px; font-size:.95rem; font-weight:700;
+  min-height:var(--toque); min-width:var(--toque); transition:transform .05s,background .15s;
+}
+button:hover{ background:var(--primario-osc); }
+button:active{ transform:scale(.96); }
+button.secundario{ background:transparent; color:var(--primario); }
+button.secundario:hover{ background:var(--primario); color:#fff; }
+button.chico{ padding:6px 10px; font-size:.8rem; min-height:36px; min-width:36px; }
+button.exito{ background:var(--exito); border-color:var(--exito); }
+button.peligro{ background:var(--error); border-color:var(--error); }
+button:disabled{ opacity:.5; cursor:not-allowed; }
+main{ margin-top:14px; }
+.panel{
+  background:var(--panel); border-radius:var(--radio); box-shadow:var(--sombra);
+  padding:18px; margin-bottom:14px; border:1px solid var(--borde);
+}
+.oculto{ display:none !important; }
+.barra-wrap{ background:var(--borde); border-radius:20px; height:16px; overflow:hidden; margin:8px 0; }
+.barra{ height:100%; background:linear-gradient(90deg,var(--primario),var(--secundario)); width:0%; transition:width .3s; }
+.fila-info{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; font-size:.85rem; color:var(--texto-suave); align-items:center; }
+.ecuacion{ font-size:1.5rem; text-align:center; margin:16px 0; font-weight:800; }
+.pastilla{ display:inline-block; background:var(--primario); color:#fff; border-radius:20px; padding:3px 12px; font-size:.78rem; font-weight:700; }
+.consigna{ background:var(--bg); border-left:6px solid var(--secundario); padding:10px 14px; border-radius:10px; margin-bottom:14px; }
+
+/* Zonas de arrastre / piezas */
+.zona-piezas, .zona-destino{
+  display:flex; flex-wrap:wrap; gap:10px; min-height:64px;
+  border:2px dashed var(--borde); border-radius:12px; padding:12px; align-content:flex-start;
+}
+.zona-destino{ border-style:solid; background:var(--bg); }
+.zona-destino.resaltada{ border-color:var(--acento); box-shadow:0 0 0 3px var(--acento) inset; }
+.pieza{
+  background:var(--primario); color:#fff; border-radius:10px; padding:10px 14px;
+  font-weight:700; cursor:grab; user-select:none; touch-action:none;
+  min-height:var(--toque); display:flex; align-items:center; justify-content:center;
+  border:2px solid transparent;
+}
+.pieza.seleccionada{ border-color:var(--acento); box-shadow:0 0 0 3px var(--acento); }
+.pieza.arrastrando{ opacity:.5; }
+.pieza.correcta{ background:var(--exito); }
+.pieza.incorrecta{ background:var(--error); }
+.pieza[aria-disabled="true"]{ cursor:default; opacity:.5; }
+
+.grid-tarjetas{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-top:12px; }
+.tarjeta{
+  background:var(--bg); border:2px solid var(--borde); border-radius:12px; padding:14px;
+  text-align:center; font-size:1.02rem; cursor:pointer; user-select:none; transition:border-color .15s;
+}
+.tarjeta:hover{ border-color:var(--primario); }
+.tarjeta.seleccionada{ border-color:var(--acento); box-shadow:0 0 0 3px var(--acento) inset; }
+.tarjeta.correcta{ border-color:var(--exito); background:var(--exito-bg); }
+.tarjeta.incorrecta{ border-color:var(--error); background:var(--error-bg); }
+.tarjeta.emparejada{ opacity:.4; cursor:default; }
+
+.lista-pasos{ list-style:none; padding:0; margin:14px 0; display:flex; flex-direction:column; gap:8px; }
+.lista-pasos li{ display:flex; align-items:center; gap:10px; background:var(--bg); border:2px solid var(--borde); border-radius:10px; padding:10px 12px; }
+.lista-pasos .num{ font-weight:800; background:var(--primario); color:#fff; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.lista-pasos .texto-paso{ flex:1; }
+.lista-pasos .acciones-paso{ display:flex; gap:4px; }
+
+/* Balanza */
+.balanza-wrap{ text-align:center; margin:20px 0; }
+.balanza-svg{ max-width:100%; height:auto; }
+.slider-fila{ display:flex; align-items:center; gap:12px; justify-content:center; margin:14px 0; flex-wrap:wrap; }
+input[type="range"]{ width:220px; height:var(--toque); }
+input[type="text"], input[type="number"]{
+  font-size:1.05rem; padding:10px 12px; border-radius:10px; border:2px solid var(--borde);
+  background:var(--panel); color:var(--texto); min-height:var(--toque); max-width:220px;
+}
+
+/* Cajas */
+.grid-cajas{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:14px; margin-top:14px; }
+.caja{
+  background:linear-gradient(160deg,var(--acento),var(--primario)); color:#fff; border-radius:14px;
+  padding:22px 10px; text-align:center; font-weight:800; font-size:1.1rem; cursor:pointer;
+  min-height:80px; display:flex; align-items:center; justify-content:center; transition:transform .1s;
+}
+.caja:hover{ transform:translateY(-3px); }
+.caja.abierta{ background:var(--bg); color:var(--texto); border:2px solid var(--borde); cursor:default; font-size:.95rem; }
+
+.retro{ margin-top:14px; padding:14px 16px; border-radius:12px; border-left:6px solid var(--primario); background:var(--bg); }
+.retro.correcta{ border-color:var(--exito); background:var(--exito-bg); }
+.retro.incorrecta{ border-color:var(--error); background:var(--error-bg); }
+.retro h3{ margin:0 0 6px; font-size:1rem; }
+.acciones-fila{ display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; justify-content:center; }
+
+.modal-fondo{ position:fixed; inset:0; background:rgba(10,10,20,.6); display:flex; align-items:center; justify-content:center; padding:16px; z-index:60; }
+.modal{ background:var(--panel); border-radius:var(--radio); padding:22px; max-width:540px; width:100%; max-height:88vh; overflow-y:auto; box-shadow:var(--sombra); }
+.modal h2{ margin-top:0; color:var(--primario); }
+.campo{ display:flex; flex-direction:column; gap:4px; margin-bottom:14px; }
+.campo label{ font-weight:700; font-size:.92rem; }
+.check-fila{ display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.check-fila input{ width:22px; height:22px; }
+.tabla-reporte{ width:100%; border-collapse:collapse; font-size:.85rem; }
+.tabla-reporte th,.tabla-reporte td{ border:1px solid var(--borde); padding:6px 8px; text-align:left; }
+.sr-solo{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+footer.pie{ text-align:center; font-size:.78rem; color:var(--texto-suave); margin-top:26px; }
+.tarjeta-modo{ background:var(--bg); border:2px solid var(--borde); border-radius:14px; padding:18px; cursor:pointer; text-align:center; }
+.tarjeta-modo:hover{ border-color:var(--primario); }
+.tarjeta-modo h3{ margin:6px 0; color:var(--primario); }
+@media (max-width:600px){
+  header.top h1{ font-size:1rem; } .ecuacion{ font-size:1.15rem; }
+  button{ padding:9px 12px; font-size:.85rem; } input[type="range"]{ width:160px; }
+}
+</style>
+</head>
+<body data-tema="claro" data-movimiento="normal">
+
+<header class="top">
+  <div>
+    <h1>⚖️ La Balanza Distributiva</h1>
+    <p id="subtituloModo">Practicá la propiedad distributiva resolviendo ecuaciones</p>
+  </div>
+  <div class="controles-top" role="toolbar" aria-label="Controles de accesibilidad y configuración">
+    <button type="button" class="secundario chico" id="btnToqueMas" aria-label="Agrandar zonas de toque">👆+</button>
+    <button type="button" class="secundario chico" id="btnFuenteMas" aria-label="Aumentar tamaño de letra">A+</button>
+    <button type="button" class="secundario chico" id="btnFuenteMenos" aria-label="Reducir tamaño de letra">A-</button>
+    <button type="button" class="secundario chico" id="btnTema" aria-label="Cambiar tema">🌓</button>
+    <button type="button" class="secundario chico" id="btnSonido" aria-pressed="true">🔊</button>
+    <button type="button" class="secundario chico" id="btnProfesor">🔒 Profesor</button>
+  </div>
+</header>
+
+<main class="envolver">
+
+  <!-- PANTALLA DE BIENVENIDA -->
+  <section class="panel" id="pantallaInicio">
+    <h2>¡Bienvenido/a a La Balanza Distributiva!</h2>
+    <p>Vas a resolver ecuaciones como <span class="pastilla">2(x + 3) - 4 = 10</span> usando la propiedad
+       distributiva y otras propiedades (conmutativa, asociativa, cancelativa). Todas las soluciones son
+       números enteros positivos. La sesión completa dura aproximadamente <strong>40 minutos</strong>,
+       divididos en varias actividades cortas y variadas.</p>
+    <p id="textoContinuarInicio" class="oculto"><strong>Encontramos una sesión guardada.</strong> Podés continuarla o empezar una nueva.</p>
+    <h3>Elegí un modo:</h3>
+    <div class="grid-tarjetas">
+      <div class="tarjeta-modo" tabindex="0" role="button" data-modo="estandar">
+        <div style="font-size:2rem;">🎮</div>
+        <h3>Estándar</h3>
+        <p>Arrastrar y soltar, cronómetro normal.</p>
+      </div>
+      <div class="tarjeta-modo" tabindex="0" role="button" data-modo="accesible">
+        <div style="font-size:2rem;">🤝</div>
+        <h3>Accesible</h3>
+        <p>Modo táctil simplificado: tocar para seleccionar, tocar para colocar. Sin presión de tiempo.</p>
+      </div>
+    </div>
+    <div class="acciones-fila">
+      <button type="button" class="secundario oculto" id="btnContinuarSesion">↻ Continuar sesión guardada</button>
+    </div>
+  </section>
+
+  <!-- ZONA DE JUEGO -->
+  <section class="oculto" id="zonaJuego">
+    <div class="panel">
+      <div class="fila-info">
+        <span id="tituloActividad">Actividad</span>
+        <span id="contadorProblema">Problema 1/4</span>
+        <span id="marcadorPuntos">Puntos: 0</span>
+      </div>
+      <div class="barra-wrap" role="progressbar" id="barraWrap" aria-label="Progreso de la sesión" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="barra" id="barra"></div>
+      </div>
+      <div class="fila-info">
+        <span id="infoTiempo"></span>
+        <span id="infoActividadTiempo"></span>
+        <button type="button" class="secundario chico" id="btnPausa">⏸ Pausar</button>
+      </div>
+    </div>
+
+    <div class="panel" id="panelActividad" aria-live="polite"></div>
+
+    <div class="panel oculto" id="panelRetro" aria-live="assertive">
+      <div class="retro" id="cajaRetro"></div>
+      <div class="acciones-fila">
+        <button type="button" class="secundario" id="btnPistaCorta">💡 Sugerencia corta</button>
+        <button type="button" class="secundario" id="btnMostrarPaso">📖 Mostrar paso</button>
+        <button type="button" class="secundario" id="btnOtroProblema">🔄 Generar otro problema</button>
+        <button type="button" id="btnSiguiente">Siguiente ➜</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESUMEN DE ACTIVIDAD -->
+  <section class="oculto panel" id="pantallaResumenAct">
+    <h2 id="tituloResumenAct">Resumen de la actividad</h2>
+    <div id="cuerpoResumenAct"></div>
+    <div class="acciones-fila"><button type="button" id="btnContinuarSiguienteAct">Continuar ➜</button></div>
+  </section>
+
+  <!-- INFORME FINAL -->
+  <section class="oculto panel" id="pantallaFinal">
+    <h2>🎉 ¡Sesión completada!</h2>
+    <div id="cuerpoFinal"></div>
+    <div class="acciones-fila">
+      <button type="button" class="secundario" id="btnDescargarJSON">⬇ Descargar reporte JSON</button>
+      <button type="button" id="btnNuevaSesion">↻ Nueva sesión</button>
+    </div>
+  </section>
+</main>
+
+<footer class="pie">Herramienta educativa autónoma — sin conexión a internet, sin dependencias externas.</footer>
+
+<!-- MODAL PROFESOR -->
+<div class="modal-fondo oculto" id="fondoProfesor" role="dialog" aria-modal="true" aria-labelledby="tituloProfesor">
+  <div class="modal">
+    <h2 id="tituloProfesor">🔒 Acceso profesor</h2>
+    <div id="pasoClave">
+      <div class="campo">
+        <label for="inputClave">Ingresá la clave (por defecto: <code>docente</code>)</label>
+        <input type="password" id="inputClave" autocomplete="off">
+      </div>
+      <div class="acciones-fila">
+        <button type="button" class="secundario" id="btnCancelarClave">Cancelar</button>
+        <button type="button" id="btnValidarClave">Ingresar</button>
+      </div>
+    </div>
+    <div id="panelProfesorContenido" class="oculto">
+      <div class="campo">
+        <label for="selectDificultadP">Dificultad (rango de x y coeficientes)</label>
+        <select id="selectDificultadP">
+          <option value="facil">Fácil (x: 1-6, a: 1-3)</option>
+          <option value="medio" selected>Medio (x: 1-10, a: 1-6)</option>
+          <option value="dificil">Difícil (x: 1-12, a: 2-8, con negativos controlados)</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="inputProblemasP">Problemas por actividad</label>
+        <input type="number" id="inputProblemasP" min="2" max="8" value="4">
+      </div>
+      <div class="campo">
+        <label for="inputDuracionP">Duración total objetivo (minutos)</label>
+        <input type="number" id="inputDuracionP" min="15" max="60" value="40">
+      </div>
+      <div class="campo">
+        <label for="inputSemillaP">Semilla (opcional, reproducibilidad)</label>
+        <input type="text" id="inputSemillaP" placeholder="Ej: 2026">
+      </div>
+      <div class="check-fila">
+        <input type="checkbox" id="checkModoPracticoP">
+        <label for="checkModoPracticoP">Modo práctico (sin cronómetro)</label>
+      </div>
+      <div class="acciones-fila">
+        <button type="button" class="secundario" id="btnCerrarProfesor">Cerrar</button>
+        <button type="button" id="btnAplicarProfesor">Aplicar y reiniciar sesión</button>
+        <button type="button" class="secundario" id="btnVerReporteProfesor">Ver / descargar reporte JSON</button>
+      </div>
+      <div id="zonaReporteProfesor"></div>
+    </div>
+  </div>
+</div>
+
+<div class="sr-solo" aria-live="polite" id="anuncioSR"></div>
+
+<script>
+/* =====================================================================
+   BLOQUE 0: CONFIGURACIÓN INICIAL (ajustable por el docente o en código)
+   ===================================================================== */
+const CONFIG = {
+  dificultad: "medio",           // facil | medio | dificil
+  problemasPorActividad: 4,      // cantidad de ítems por actividad
+  duracionObjetivoMin: 40,       // minutos objetivo de la sesión completa
+  modoPractico: false,           // sin cronómetro si es true
+  claveProfesor: "docente",      // clave simple del modo profesor
+  rangosXPorDificultad: { facil: [1,6], medio: [1,10], dificil: [1,12] },
+  rangosCoefPorDificultad: { facil: [1,3], medio: [1,6], dificil: [2,8] }
+};
+
+/* =====================================================================
+   BLOQUE 1: GENERADOR PSEUDOALEATORIO CON SEMILLA (reproducibilidad)
+   ===================================================================== */
+function crearGeneradorAleatorio(semilla) {
+  let a = semilla >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function textoASemilla(t){ let h=0; for(let i=0;i<t.length;i++){ h=(Math.imul(31,h)+t.charCodeAt(i))|0; } return h>>>0; }
+let rng = crearGeneradorAleatorio(Date.now() % 1000000);
+function entre(min,max){ return Math.floor(rng()*(max-min+1))+min; }
+function elegir(lista){ return lista[Math.floor(rng()*lista.length)]; }
+
+/* =====================================================================
+   BLOQUE 2: generadorDeEcuacion(seed) — ALGORITMO DE GENERACIÓN SEGURA
+   =====================================================================
+   Estrategia ("construcción hacia atrás"):
+     1) Se elige primero x (la solución), un entero positivo dentro del
+        rango configurado según la dificultad (por ej. 1..10).
+     2) Se elige una plantilla algebraica que obligue a usar la
+        propiedad distributiva (todas las plantillas de abajo tienen al
+        menos un paréntesis multiplicado por un coeficiente).
+     3) Se sortean los coeficientes "libres" de esa plantilla (el
+        coeficiente del paréntesis, los términos internos, constantes
+        externas) dentro de rangos razonables para el nivel.
+     4) Con x y esos coeficientes ya fijos, se DESPEJA matemáticamente
+        el último coeficiente que falta para que, al resolver la
+        ecuación, la solución sea exactamente x. Como ese coeficiente
+        se calcula (no se sortea), el resultado es entero positivo por
+        construcción.
+     5) Como red de seguridad, se vuelve a evaluar la ecuación con un
+        evaluador numérico (verificarSolucion) sustituyendo x, y se
+        exige que ambos lados den el mismo valor y que ese valor sea un
+        entero positivo. Si algo falla, se descarta y se reintenta
+        (máximo 60 intentos); si aun así no se logra, se usa una
+        ecuación de respaldo verificada manualmente.
+   ===================================================================== */
+const plantillas = [
+  // T1: a(x+b) = c
+  (x,rc,rx)=>{
+    const a=entre(rc[0],rc[1]); const b=entre(1,rx[1]);
+    const c=a*(x+b);
+    return { tipo:"a(x+b)=c", izq:`${a}(x + ${b})`, der:`${c}`,
+      pasos:[`Distribuir: ${a}(x + ${b}) = ${a}x + ${a*b}`,
+             `Ecuación: ${a}x + ${a*b} = ${c}`,
+             `Restar ${a*b} (cancelativa): ${a}x = ${c-a*b}`,
+             `Dividir por ${a}: x = ${(c-a*b)/a}`] };
+  },
+  // T2: a(x+b) - d = c   (con resta externa, como el ejemplo 2(x+3)-4=10)
+  (x,rc,rx)=>{
+    const a=entre(rc[0],rc[1]); const b=entre(1,rx[1]);
+    // CORRECCIÓN: "d" se acota a partir de a*(x+b)-1 para garantizar, por
+    // construcción, que c = a*(x+b) - d sea siempre positivo (antes "d" se
+    // sorteaba libremente y en dificultad "fácil" podía superar a*(x+b),
+    // generando ecuaciones con verificación negativa o cero).
+    const d=entre(1, Math.max(1, a*(x+b)-1));
+    const c=a*(x+b)-d;
+    return { tipo:"a(x+b)-d=c", izq:`${a}(x + ${b}) - ${d}`, der:`${c}`,
+      pasos:[`Distribuir: ${a}(x + ${b}) = ${a}x + ${a*b}`,
+             `Ecuación: ${a}x + ${a*b} - ${d} = ${c}`,
+             `Sumar términos numéricos: ${a}x + ${a*b-d} = ${c}`,
+             `Restar ${a*b-d} en ambos lados: ${a}x = ${c-(a*b-d)}`,
+             `Dividir por ${a}: x = ${(c-(a*b-d))/a}`] };
+  },
+  // T3: a(bx + c) + d = e   (distributiva con coeficiente interno en x)
+  (x,rc,rx)=>{
+    const a=entre(Math.max(2,rc[0]),Math.min(6,rc[1]+2)); const b=entre(1,2);
+    const c=entre(1,rx[1]); const d=entre(1,rx[1]);
+    const e=a*(b*x+c)+d;
+    return { tipo:"a(bx+c)+d=e", izq:`${a}(${b}x + ${c}) + ${d}`, der:`${e}`,
+      pasos:[`Distribuir ${a} en (${b}x + ${c}): ${a*b}x + ${a*c}`,
+             `Ecuación: ${a*b}x + ${a*c} + ${d} = ${e}`,
+             `Sumar términos numéricos: ${a*b}x + ${a*c+d} = ${e}`,
+             `Restar ${a*c+d}: ${a*b}x = ${e-(a*c+d)}`,
+             `Dividir por ${a*b}: x = ${(e-(a*c+d))/(a*b)}`] };
+  },
+  // T4: (x+b)*a = c   (paréntesis a la izquierda, coeficiente a la derecha — conmutativa de la multiplicación)
+  (x,rc,rx)=>{
+    const a=entre(rc[0],rc[1]); const b=entre(1,rx[1]);
+    const c=(x+b)*a;
+    return { tipo:"(x+b)*a=c", izq:`(x + ${b})·${a}`, der:`${c}`,
+      pasos:[`Aplicar conmutativa: (x + ${b})·${a} = ${a}(x + ${b})`,
+             `Distribuir: ${a}x + ${a*b}`,
+             `Ecuación: ${a}x + ${a*b} = ${c}`,
+             `Restar ${a*b}: ${a}x = ${c-a*b}`,
+             `Dividir por ${a}: x = ${(c-a*b)/a}`] };
+  },
+  // T5: a(x+b) + c(x+d) = e   (dos paréntesis, requiere asociativa/conmutativa al agrupar)
+  (x,rc,rx)=>{
+    const a=entre(rc[0],rc[1]); const c=entre(rc[0],rc[1]);
+    const b=entre(1,rx[1]); const d=entre(1,rx[1]);
+    const e=(a+c)*x + a*b + c*d;
+    return { tipo:"a(x+b)+c(x+d)=e", izq:`${a}(x + ${b}) + ${c}(x + ${d})`, der:`${e}`,
+      pasos:[`Distribuir el primer paréntesis: ${a}x + ${a*b}`,
+             `Distribuir el segundo paréntesis: ${c}x + ${c*d}`,
+             `Ecuación: ${a}x + ${a*b} + ${c}x + ${c*d} = ${e}`,
+             `Agrupar términos semejantes (asociativa/conmutativa): ${a+c}x + ${a*b+c*d} = ${e}`,
+             `Restar ${a*b+c*d}: ${a+c}x = ${e-(a*b+c*d)}`,
+             `Dividir por ${a+c}: x = ${(e-(a*b+c*d))/(a+c)}`] };
+  }
+];
+
+const ECUACION_RESPALDO = {
+  tipo:"a(x+b)=c", izq:"2(x + 3)", der:"10", x:2,
+  pasos:["Distribuir: 2(x + 3) = 2x + 6","Ecuación: 2x + 6 = 10","Restar 6: 2x = 4","Dividir por 2: x = 2"]
+};
+
+function verificarSolucion(ecuacion, x) {
+  // Evalúa numéricamente ambos lados de la ecuación sustituyendo x,
+  // y confirma que sean iguales, finitos y enteros positivos.
+  try {
+    const evalLado = (texto) => {
+      let expr = texto.replace(/·/g,"*").replace(/(\d)(x)/g,"$1*x").replace(/(\d)\(/g,"$1*(").replace(/x/g,`(${x})`);
+      return Function(`"use strict";return (${expr});`)();
+    };
+    const vi = evalLado(ecuacion.izq), vd = evalLado(ecuacion.der);
+    if (!Number.isFinite(vi) || !Number.isFinite(vd)) return false;
+    if (Math.round(vi*1e6) !== Math.round(vd*1e6)) return false;
+    if (vi <= 0) return false;
+    return true;
+  } catch(e){ return false; }
+}
+
+function generadorDeEcuacion() {
+  const rc = CONFIG.rangosCoefPorDificultad[CONFIG.dificultad] || [1,6];
+  const rx = CONFIG.rangosXPorDificultad[CONFIG.dificultad] || [1,10];
+  const MAX_INTENTOS = 60;
+  for (let i=0;i<MAX_INTENTOS;i++){
+    const x = entre(rx[0], rx[1]);
+    if (x <= 0) continue;
+    let eq;
+    try { eq = elegir(plantillas)(x, rc, rx); } catch(e){ continue; }
+    if (Number.isInteger(x) && x>0 && verificarSolucion(eq, x)) { eq.x = x; return eq; }
+  }
+  console.warn("No se generó una ecuación válida en el límite de intentos; se usa la de respaldo.");
+  return JSON.parse(JSON.stringify(ECUACION_RESPALDO));
+}
+/* PRUEBA MANUAL (consola del navegador):
+   let ok=0, total=3000;
+   for(let i=0;i<total;i++){ const e=generadorDeEcuacion(); if(verificarSolucion(e,e.x) && e.x>0) ok++; }
+   console.log(ok+"/"+total+" ecuaciones válidas"); // debe dar total/total
+*/
+
+/* =====================================================================
+   BLOQUE 3: ESTADO GLOBAL DE LA SESIÓN
+   ===================================================================== */
+const PROPIEDADES = ["Distributiva","Conmutativa","Asociativa","Cancelativa"];
+const estado = {
+  modo: "estandar", sonido: true, movimientoReducido: false,
+  actividadIndex: 0, problemaIndex: 0, puntos: 0, aciertos: 0, errores: 0,
+  erroresPorTipo: {}, historialActividades: [], pausado: false,
+  timerId: null, tiempoRestante: 0, datosActuales: null,
+  inicioSesion: null, tiemposPorActividad: []
+};
+
+const ACTIVIDADES = [
+  { id:"arrastrarTerminos", nombre:"1. Arrastrar términos (expandir)", seg:60 },
+  { id:"arrastrarExpresion", nombre:"2. Arrastrar expresión completa", seg:50 },
+  { id:"deslizador",         nombre:"3. Deslizador: balanceá la ecuación", seg:55 },
+  { id:"emparejar",          nombre:"4. Emparejar equivalencias", seg:45 },
+  { id:"ordenar",            nombre:"5. Ordenar los pasos", seg:50 },
+  { id:"cajas",              nombre:"6. Abrí las cajas de verificación", seg:40 },
+  { id:"balanza",            nombre:"7. Balanceá la balanza (propiedad)", seg:35 },
+  { id:"reto",               nombre:"8. Reto final: resolvé y comprobá", seg:75 }
+];
+// Con problemasPorActividad=4 (por defecto), el tiempo activo estimado es
+// aproximadamente sum(seg)*4 = 460*4 ≈ 1840 seg ≈ 30-31 min de resolución;
+// sumando consignas, retroalimentación y transiciones entre actividades,
+// la sesión completa se acerca a los 40 minutos objetivo configurados en
+// CONFIG.duracionObjetivoMin. El profesor puede ajustar la cantidad de
+// problemas por actividad para afinar la duración total.
+
+const $ = id => document.getElementById(id);
+function anunciar(t){ $("anuncioSR").textContent = t; }
+
+/* Sonidos simples generados con WebAudio (sin archivos externos) */
+let audioCtx = null;
+function sonar(tipo){
+  if (!estado.sonido) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = tipo === "ok" ? 660 : 220;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+  }catch(e){ /* WebAudio no disponible: continuar sin sonido */ }
+}
+
+/* =====================================================================
+   BLOQUE 4: PROGRESO / GUARDADO LOCAL
+   ===================================================================== */
+function guardarProgreso(){
+  try{
+    localStorage.setItem("balanza_distributiva_estado", JSON.stringify({
+      modo:estado.modo, actividadIndex:estado.actividadIndex, problemaIndex:estado.problemaIndex,
+      puntos:estado.puntos, aciertos:estado.aciertos, errores:estado.errores,
+      erroresPorTipo:estado.erroresPorTipo, historialActividades:estado.historialActividades,
+      CONFIG
+    }));
+  }catch(e){}
+}
+function cargarProgreso(){ try{ const d=localStorage.getItem("balanza_distributiva_estado"); return d?JSON.parse(d):null; }catch(e){ return null; } }
+function borrarProgreso(){ try{ localStorage.removeItem("balanza_distributiva_estado"); }catch(e){} }
+
+/* =====================================================================
+   BLOQUE 5: TEMPORIZADOR
+   ===================================================================== */
+function iniciarTemporizador(seg, alTerminar){
+  detenerTemporizador();
+  if (CONFIG.modoPractico || estado.modo === "accesible"){
+    $("infoTiempo").textContent = "Modo sin presión de tiempo ⏳";
+    return;
+  }
+  estado.tiempoRestante = seg;
+  actualizarTiempoTexto();
+  estado.timerId = setInterval(()=>{
+    if (estado.pausado) return;
+    estado.tiempoRestante--; actualizarTiempoTexto();
+    if (estado.tiempoRestante <= 0){ detenerTemporizador(); alTerminar(); }
+  }, 1000);
+}
+function actualizarTiempoTexto(){ $("infoTiempo").textContent = "⏱ " + estado.tiempoRestante + " s"; }
+function detenerTemporizador(){ if(estado.timerId) clearInterval(estado.timerId); estado.timerId=null; }
+$("btnPausa").addEventListener("click", ()=>{
+  estado.pausado = !estado.pausado;
+  $("btnPausa").textContent = estado.pausado ? "▶ Continuar" : "⏸ Pausar";
+  anunciar(estado.pausado ? "Pausado" : "Reanudado");
+});
+
+/* =====================================================================
+   BLOQUE 6: RETROALIMENTACIÓN
+   ===================================================================== */
+function retro(correcto, principal, extra, tipoError){
+  detenerTemporizador();
+  const caja = $("cajaRetro");
+  caja.className = "retro " + (correcto?"correcta":"incorrecta");
+  caja.innerHTML = `<h3>${correcto?"✅ ¡Muy bien!":"❌ Revisemos"}</h3><p>${principal}</p>` + (extra?`<p>${extra}</p>`:"");
+  $("panelRetro").classList.remove("oculto");
+  anunciar((correcto?"Correcto. ":"Incorrecto. ")+principal);
+  sonar(correcto?"ok":"error");
+  if (correcto){ estado.aciertos++; estado.puntos += 10; }
+  else{
+    estado.errores++;
+    if (tipoError){
+      estado.erroresPorTipo[tipoError] = (estado.erroresPorTipo[tipoError]||0)+1;
+      if (estado.erroresPorTipo[tipoError] === 3) setTimeout(()=>miniLeccion(tipoError), 350);
+    }
+  }
+  $("marcadorPuntos").textContent = "Puntos: " + estado.puntos;
+  guardarProgreso();
+}
+function miniLeccion(tipo){
+  const L = {
+    signos:{t:"Manejo de signos", d:"Al distribuir un número negativo, cambiá el signo de TODOS los términos internos. Ej: -2(x+3) = -2x - 6.", e:"Practicá: -3(x+4) = -3x - 12"},
+    distribucion:{t:"Propiedad distributiva", d:"El término de afuera del paréntesis multiplica a CADA término de adentro. Ej: 5(x+2) = 5x + 10.", e:"Practicá: 4(x+3) = 4x + 12"},
+    despeje:{t:"Despejar la incógnita", d:"Primero movés los números sumando/restando lo mismo en ambos lados; al final dividís por el coeficiente de x.", e:"Practicá: 5x + 4 = 19 → x = 3"}
+  };
+  const l = L[tipo] || L.distribucion;
+  const cont = document.createElement("div");
+  cont.className = "modal-fondo";
+  cont.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><h2>💡 ${l.t}</h2><p>${l.d}</p><p><strong>${l.e}</strong></p>
+    <div class="acciones-fila"><button type="button" id="btnCerrarML">Entendido</button></div></div>`;
+  document.body.appendChild(cont);
+  cont.querySelector("#btnCerrarML").focus();
+  cont.querySelector("#btnCerrarML").addEventListener("click", ()=>cont.remove());
+}
+
+/* =====================================================================
+   BLOQUE 7: crearActividad(tipo) — RENDER DE CADA MINIJUEGO
+   ===================================================================== */
+function actualizarBarra(){
+  const total = ACTIVIDADES.length;
+  const av1 = estado.actividadIndex/total;
+  const av2 = (estado.problemaIndex/CONFIG.problemasPorActividad)/total;
+  const pct = Math.min(100, Math.round((av1+av2)*100));
+  $("barra").style.width = pct+"%"; $("barraWrap").setAttribute("aria-valuenow", pct);
+}
+
+function iniciarActividad(i){
+  estado.actividadIndex = i; estado.problemaIndex = 0; estado.pausado = false;
+  $("btnPausa").textContent = "⏸ Pausar";
+  estado.tiemposPorActividad[i] = estado.tiemposPorActividad[i] || { inicio: Date.now(), fin:null };
+  if (i >= ACTIVIDADES.length) return mostrarInformeFinal();
+  siguienteProblema();
+}
+function siguienteProblema(){
+  $("panelRetro").classList.add("oculto");
+  const def = ACTIVIDADES[estado.actividadIndex];
+  if (estado.problemaIndex >= CONFIG.problemasPorActividad) return mostrarResumenActividad();
+  $("tituloActividad").textContent = def.nombre;
+  $("contadorProblema").textContent = `Problema ${estado.problemaIndex+1}/${CONFIG.problemasPorActividad}`;
+  $("infoActividadTiempo").textContent = `⏳ Duración estimada de esta actividad: ~${Math.round(def.seg*CONFIG.problemasPorActividad/60)} min`;
+  actualizarBarra();
+  crearActividad(def.id);
+  guardarProgreso();
+}
+function crearActividad(tipo){
+  const cont = $("panelActividad"); cont.innerHTML = "";
+  const ecuacion = generadorDeEcuacion();
+  estado.datosActuales = { ecuacion, tipo };
+  switch(tipo){
+    case "arrastrarTerminos": return actArrastrarTerminos(cont, ecuacion);
+    case "arrastrarExpresion": return actArrastrarExpresion(cont, ecuacion);
+    case "deslizador": return actDeslizador(cont, ecuacion);
+    case "emparejar": return actEmparejar(cont);
+    case "ordenar": return actOrdenar(cont, ecuacion);
+    case "cajas": return actCajas(cont, ecuacion);
+    case "balanza": return actBalanza(cont, ecuacion);
+    case "reto": return actReto(cont, ecuacion);
+  }
+}
+
+/* --------- Utilidad común: selección "sin arrastre" (accesible) --------- */
+function habilitarSeleccionSinArrastre(piezas, destinos, alColocar) {
+  let seleccionada = null;
+  piezas.forEach(p=>{
+    p.setAttribute("tabindex","0"); p.setAttribute("role","button");
+    const activar = ()=>{
+      if (p.getAttribute("aria-disabled")==="true") return;
+      if (seleccionada) seleccionada.classList.remove("seleccionada");
+      seleccionada = (seleccionada===p) ? null : p;
+      if (seleccionada) seleccionada.classList.add("seleccionada");
+    };
+    p.addEventListener("click", activar);
+    p.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); activar(); }});
+  });
+  destinos.forEach(d=>{
+    d.setAttribute("tabindex","0"); d.setAttribute("role","button");
+    const soltar = ()=>{
+      if (!seleccionada) { anunciar("Primero seleccioná una pieza."); return; }
+      alColocar(seleccionada, d);
+      seleccionada.classList.remove("seleccionada");
+      seleccionada = null;
+    };
+    d.addEventListener("click", soltar);
+    d.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); soltar(); }});
+  });
+}
+/* --------- Utilidad común: arrastre real con Drag&Drop + táctil --------- */
+function habilitarArrastreNativo(piezas, destinos, alSoltar){
+  piezas.forEach(p=>{
+    p.draggable = true;
+    p.addEventListener("dragstart", e=>{ e.dataTransfer.setData("text/plain", p.dataset.valor||""); p.classList.add("arrastrando"); });
+    p.addEventListener("dragend", ()=> p.classList.remove("arrastrando"));
+  });
+  destinos.forEach(d=>{
+    d.addEventListener("dragover", e=>{ e.preventDefault(); d.classList.add("resaltada"); });
+    d.addEventListener("dragleave", ()=> d.classList.remove("resaltada"));
+    d.addEventListener("drop", e=>{
+      e.preventDefault(); d.classList.remove("resaltada");
+      const valor = e.dataTransfer.getData("text/plain");
+      const pieza = piezas.find(p => p.dataset.valor === valor);
+      if (pieza) alSoltar(pieza, d);
+    });
+  });
+}
+
+/* --------- Actividad 1: Arrastrar términos para expandir --------- */
+function actArrastrarTerminos(cont, ecuacion){
+  const def = ACTIVIDADES[0];
+  iniciarTemporizador(def.seg, ()=> retro(false,"Se acabó el tiempo.",null,"distribucion"));
+  // Tomamos el primer paréntesis simple a(x+b) de la ecuación (o generamos uno equivalente para esta mecánica)
+  const a = entre(2,6), b = entre(1,8);
+  const piezasDatos = [ {valor:`${a}x`, es:"term"}, {valor:`${a*b}`, es:"term"} ].sort(()=>rng()-0.5);
+  cont.innerHTML = `
+    <div class="consigna">Expandí <span class="pastilla">${a}(x + ${b})</span> arrastrando (o seleccionando y tocando) los
+    dos términos resultantes hacia la zona de resultado, en cualquier orden.</div>
+    <p><strong>Modo sin arrastre:</strong> tocá una pieza y luego tocá la zona de destino.</p>
+    <p>Piezas disponibles:</p>
+    <div class="zona-piezas" id="zonaPiezas" aria-label="Piezas disponibles"></div>
+    <p>Zona de resultado (arrastrá aquí las dos piezas correctas):</p>
+    <div class="zona-destino" id="zonaDestino" aria-label="Zona de resultado" style="min-height:70px;"></div>
+  `;
+  const zonaP = cont.querySelector("#zonaPiezas");
+  const zonaD = cont.querySelector("#zonaDestino");
+  const piezasEl = piezasDatos.map((pd,idx)=>{
+    const div = document.createElement("div");
+    div.className = "pieza"; div.textContent = pd.valor; div.dataset.valor = pd.valor; div.dataset.idx = idx;
+    zonaP.appendChild(div); return div;
+  });
+  // Además agregamos una pieza "distractor" incorrecta para practicar detección de errores
+  const distractor = document.createElement("div");
+  distractor.className = "pieza"; distractor.textContent = `${a}x+${b}`; distractor.dataset.valor = `${a}x+${b}`;
+  zonaP.appendChild(distractor); piezasEl.push(distractor);
+
+  let colocadas = [];
+  function alColocar(pieza, destino){
+    if (pieza.dataset.colocada === "1") return;
+    const correcto = pieza.dataset.valor === `${a}x` || pieza.dataset.valor === `${a*b}`;
+    if (correcto){
+      pieza.classList.add("correcta"); pieza.setAttribute("aria-disabled","true"); pieza.dataset.colocada = "1";
+      destino.appendChild(pieza); colocadas.push(pieza.dataset.valor);
+      anunciar("Pieza correcta colocada.");
+      if (colocadas.length === 2){
+        retro(true, `¡Correcto! ${a}(x + ${b}) = ${a}x + ${a*b}.`, "Multiplicaste el término externo por cada término interno del paréntesis.");
+      }
+    } else {
+      pieza.classList.add("incorrecta");
+      setTimeout(()=>pieza.classList.remove("incorrecta"), 600);
+      retro(false, `Esa pieza no corresponde a la expansión de ${a}(x + ${b}).`, "Recordá: hay que multiplicar el número de afuera por CADA término de adentro por separado.", "distribucion");
+    }
+  }
+  habilitarArrastreNativo(piezasEl, [zonaD], alColocar);
+  habilitarSeleccionSinArrastre(piezasEl, [zonaD], alColocar);
+}
+
+/* --------- Actividad 2: Arrastrar expresión completa --------- */
+function actArrastrarExpresion(cont, ecuacion){
+  const def = ACTIVIDADES[1];
+  iniciarTemporizador(def.seg, ()=> retro(false,"Se acabó el tiempo.",null,"despeje"));
+  // CORRECCIÓN: antes se intentaba "adivinar" a y b con una expresión regular
+  // aplicada al texto de la ecuación general (ecuacion.izq). Esa regex sólo
+  // reconocía el patrón "N(x + M)" y fallaba silenciosamente en 2 de las 5
+  // plantillas (por ejemplo "3(2x + 4) + 2" o "(x + 4)·3"), cayendo en un
+  // valor de repuesto fijo (a=3, b=4) que NO correspondía a la ecuación
+  // mostrada: la opción marcada como "correcta" podía entonces ser errónea.
+  // Ahora esta actividad genera su propio par (a, b) — igual que la
+  // Actividad 1 — de forma independiente y siempre consistente con lo que
+  // se muestra en pantalla, sin depender de parsear texto.
+  const a = entre(2, 6), b = entre(1, 8);
+  const ecuacionPractica = `${a}(x + ${b})`;
+  cont.innerHTML = `
+    <div class="consigna">Tenés la expresión <span class="pastilla">${ecuacionPractica}</span>, que forma parte de una
+    ecuación con distributiva. Arrastrá (o seleccioná y tocá) la expresión equivalente correcta luego de aplicar la
+    propiedad distributiva, hacia la zona de "Resultado".</div>
+    <div class="zona-piezas" id="zonaPiezasExp" aria-label="Opciones de expresión"></div>
+    <p>Resultado:</p>
+    <div class="zona-destino" id="zonaDestinoExp" style="min-height:70px;"></div>
+  `;
+  const correcta = `${a}x + ${a*b}`;
+  const incorrecta1 = `${a}x + ${b}`;
+  const incorrecta2 = `${a+b}x`;
+  const opciones = [correcta, incorrecta1, incorrecta2].sort(()=>rng()-0.5);
+  const zonaP = cont.querySelector("#zonaPiezasExp");
+  const zonaD = cont.querySelector("#zonaDestinoExp");
+  const piezasEl = opciones.map(op=>{
+    const div = document.createElement("div");
+    div.className="pieza"; div.textContent = op; div.dataset.valor = op;
+    zonaP.appendChild(div); return div;
+  });
+  function alColocar(pieza, destino){
+    const ok = pieza.dataset.valor === correcta;
+    destino.innerHTML = ""; destino.appendChild(pieza);
+    pieza.classList.add(ok?"correcta":"incorrecta");
+    retro(ok, ok? `¡Correcto! ${a}(x + ${b}) = ${correcta}.` : `Esa expresión no es equivalente a ${a}(x + ${b}).`,
+      ok? null : `La expansión correcta es ${correcta}: multiplicá ${a} por cada término del paréntesis.`, "distribucion");
+  }
+  habilitarArrastreNativo(piezasEl, [zonaD], alColocar);
+  habilitarSeleccionSinArrastre(piezasEl, [zonaD], alColocar);
+}
+
+/* --------- Actividad 3: Deslizador --------- */
+function actDeslizador(cont, ecuacion){
+  const def = ACTIVIDADES[2];
+  iniciarTemporizador(def.seg, ()=> finalizarDeslizador(true));
+  cont.innerHTML = `
+    <div class="consigna">Ajustá el deslizador hasta encontrar el valor de <strong>x</strong> que hace
+    que la ecuación se cumpla (balanceada = ambos lados iguales).</div>
+    <div class="ecuacion">${ecuacion.izq} = ${ecuacion.der}</div>
+    <div class="slider-fila">
+      <label for="sliderX">x = <span id="valorSlider">1</span></label>
+      <input type="range" id="sliderX" min="1" max="20" value="1" step="1">
+    </div>
+    <div id="estadoBalance" style="text-align:center; font-weight:700;"></div>
+    <div class="acciones-fila"><button type="button" id="btnConfirmarSlider">Confirmar valor</button></div>
+  `;
+  const slider = cont.querySelector("#sliderX");
+  const valorSpan = cont.querySelector("#valorSlider");
+  const estadoDiv = cont.querySelector("#estadoBalance");
+  function evaluar(xv){
+    try{
+      const evalLado = (texto)=>{
+        let expr = texto.replace(/·/g,"*").replace(/(\d)(x)/g,"$1*x").replace(/(\d)\(/g,"$1*(").replace(/x/g,`(${xv})`);
+        return Function(`"use strict";return (${expr});`)();
+      };
+      return { izq: evalLado(ecuacion.izq), der: evalLado(ecuacion.der) };
+    }catch(e){ return {izq:NaN, der:NaN}; }
+  }
+  function actualizar(){
+    const xv = parseInt(slider.value,10);
+    valorSpan.textContent = xv;
+    const {izq, der} = evaluar(xv);
+    const dif = Math.abs(izq-der);
+    if (dif < 0.001){ estadoDiv.textContent = "⚖️ ¡Balanceada!"; estadoDiv.style.color = "var(--exito)"; }
+    else if (izq > der){ estadoDiv.textContent = `Lado izquierdo más pesado (${izq} > ${der}) — probá bajar x`; estadoDiv.style.color="var(--acento)"; }
+    else { estadoDiv.textContent = `Lado derecho más pesado (${izq} < ${der}) — probá subir x`; estadoDiv.style.color="var(--acento)"; }
+  }
+  slider.addEventListener("input", actualizar);
+  actualizar();
+  cont.querySelector("#btnConfirmarSlider").addEventListener("click", ()=> finalizarDeslizador(false, parseInt(slider.value,10)));
+
+  function finalizarDeslizador(tiempoAgotado, xv){
+    const ok = !tiempoAgotado && xv === ecuacion.x;
+    retro(ok,
+      tiempoAgotado ? "Se acabó el tiempo." : (ok?`¡Correcto! x = ${ecuacion.x} balancea la ecuación.`:`Ese valor no balancea la ecuación.`),
+      `La solución correcta es x = ${ecuacion.x}. Resolución: ${ecuacion.pasos.join(" → ")}`, "despeje");
+  }
+}
+
+/* --------- Actividad 4: Emparejar equivalencias --------- */
+function actEmparejar(cont){
+  const def = ACTIVIDADES[3];
+  iniciarTemporizador(def.seg, ()=> retro(false,"Se acabó el tiempo.",null,"distribucion"));
+  const pares = [];
+  for (let i=0;i<3;i++){ const a=entre(2,6), b=entre(1,8); pares.push({id:"p"+i, izq:`${a}(x + ${b})`, der:`${a}x + ${a*b}`}); }
+  const izquierdas = pares.map(p=>({id:p.id, texto:p.izq}));
+  const derechas = [...pares.map(p=>({id:p.id, texto:p.der}))].sort(()=>rng()-0.5);
+  cont.innerHTML = `
+    <div class="consigna">Seleccioná una expresión con paréntesis y luego su forma expandida equivalente
+    (una de ellas es la expansión distributiva correcta).</div>
+    <div class="grid-tarjetas" id="colI" role="group" aria-label="Expresiones con paréntesis"></div>
+    <p></p>
+    <div class="grid-tarjetas" id="colD" role="group" aria-label="Formas expandidas"></div>
+  `;
+  const colI = cont.querySelector("#colI"), colD = cont.querySelector("#colD");
+  izquierdas.forEach(it=>colI.appendChild(crearTarjetaEmp(it.id,it.texto,"izq")));
+  derechas.forEach(it=>colD.appendChild(crearTarjetaEmp(it.id,it.texto,"der")));
+  let sel=null, resueltos=0, huboError=false;
+  function crearTarjetaEmp(id,texto,lado){
+    const div=document.createElement("div"); div.className="tarjeta"; div.tabIndex=0; div.setAttribute("role","button");
+    div.dataset.id=id; div.dataset.lado=lado; div.textContent=texto;
+    const act=()=>clic(div);
+    div.addEventListener("click",act); div.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();act();}});
+    return div;
+  }
+  function clic(el){
+    if (el.classList.contains("emparejada")) return;
+    if (!sel){ sel=el; el.classList.add("seleccionada"); return; }
+    if (sel===el){ el.classList.remove("seleccionada"); sel=null; return; }
+    if (sel.dataset.lado===el.dataset.lado){ sel.classList.remove("seleccionada"); sel=el; el.classList.add("seleccionada"); return; }
+    if (sel.dataset.id===el.dataset.id){
+      sel.classList.remove("seleccionada"); sel.classList.add("emparejada","correcta"); el.classList.add("emparejada","correcta");
+      resueltos++; anunciar("Pareja correcta.");
+      if (resueltos===pares.length) retro(!huboError,"¡Formaste todas las parejas!","Recordá multiplicar por cada término del paréntesis.");
+    } else {
+      huboError=true; sel.classList.add("incorrecta"); el.classList.add("incorrecta");
+      setTimeout(()=>{ sel.classList.remove("incorrecta"); el.classList.remove("incorrecta"); },700);
+    }
+    sel.classList.remove("seleccionada"); sel=null;
+  }
+}
+
+/* --------- Actividad 5: Ordenar los pasos --------- */
+function actOrdenar(cont, ecuacion){
+  const def = ACTIVIDADES[4];
+  iniciarTemporizador(def.seg, ()=> evaluarOrden(true));
+  const originales = ecuacion.pasos.map((p,i)=>({texto:p, orden:i}));
+  const mezclados = [...originales].sort(()=>rng()-0.5);
+  cont.innerHTML = `
+    <div class="consigna">Ordená los pasos para resolver <span class="pastilla">${ecuacion.izq} = ${ecuacion.der}</span>.
+    Usá los botones ↑ ↓ para moverlos (funciona con mouse, toque o teclado).</div>
+    <ol class="lista-pasos" id="listaOrden"></ol>
+    <div class="acciones-fila"><button type="button" id="btnVerificarOrden">Verificar orden</button></div>
+  `;
+  const lista = cont.querySelector("#listaOrden");
+  function render(){
+    lista.innerHTML="";
+    mezclados.forEach((p,idx)=>{
+      const li=document.createElement("li"); li.dataset.idx=idx;
+      li.innerHTML=`<span class="num">${idx+1}</span><span class="texto-paso">${p.texto}</span>
+        <span class="acciones-paso">
+          <button type="button" class="secundario chico" data-accion="subir" aria-label="Mover arriba">↑</button>
+          <button type="button" class="secundario chico" data-accion="bajar" aria-label="Mover abajo">↓</button>
+        </span>`;
+      lista.appendChild(li);
+    });
+  }
+  render();
+  lista.addEventListener("click", e=>{
+    const btn = e.target.closest("button"); if(!btn) return;
+    const idx = parseInt(btn.closest("li").dataset.idx,10);
+    if (btn.dataset.accion==="subir" && idx>0){ [mezclados[idx-1],mezclados[idx]]=[mezclados[idx],mezclados[idx-1]]; render(); anunciar("Movido arriba"); }
+    if (btn.dataset.accion==="bajar" && idx<mezclados.length-1){ [mezclados[idx+1],mezclados[idx]]=[mezclados[idx],mezclados[idx+1]]; render(); anunciar("Movido abajo"); }
+  });
+  cont.querySelector("#btnVerificarOrden").addEventListener("click", ()=> evaluarOrden(false));
+  function evaluarOrden(tiempoAgotado){
+    const ok = mezclados.every((p,i)=>p.orden===i);
+    retro(ok, tiempoAgotado?"Se acabó el tiempo.":(ok?"¡Orden correcto!":"El orden todavía no es correcto."),
+      ok?null:("Orden correcto: "+originales.map(p=>p.texto).join(" → ")), "despeje");
+  }
+}
+
+/* --------- Actividad 6: Abrir/romper cajas de verificación --------- */
+function actCajas(cont, ecuacion){
+  const def = ACTIVIDADES[5];
+  iniciarTemporizador(def.seg, ()=> retro(false,"Se acabó el tiempo.",null,"despeje"));
+  // 4 cajas: 1 con el paso correcto siguiente, 3 con pasos incorrectos
+  const correcto = ecuacion.pasos[1] || ecuacion.pasos[0];
+  const incorrectos = [
+    "Sumar x a ambos lados sin motivo",
+    "Multiplicar todo por 0",
+    "Cambiar el signo de un solo término al azar"
+  ];
+  const cajasDatos = [{texto:correcto, ok:true}, ...incorrectos.map(t=>({texto:t, ok:false}))].sort(()=>rng()-0.5);
+  cont.innerHTML = `
+    <div class="consigna">De la ecuación <span class="pastilla">${ecuacion.izq} = ${ecuacion.der}</span>,
+    ¡abrí la caja que contiene el paso correcto de comprobación/resolución!</div>
+    <div class="grid-cajas" id="gridCajas"></div>
+  `;
+  const grid = cont.querySelector("#gridCajas");
+  let resuelto = false;
+  cajasDatos.forEach((c,idx)=>{
+    const div = document.createElement("div");
+    div.className = "caja"; div.tabIndex=0; div.setAttribute("role","button");
+    div.textContent = "📦 Caja " + (idx+1);
+    const abrir = ()=>{
+      if (resuelto) return;
+      div.classList.add("abierta"); div.textContent = c.texto;
+      if (c.ok){
+        resuelto = true;
+        retro(true, "¡Encontraste el paso correcto!", "Paso: " + c.texto);
+      } else {
+        retro(false, "Esa caja no tenía el paso correcto.", "Seguí buscando en las otras cajas.", "distribucion");
+      }
+    };
+    div.addEventListener("click", abrir);
+    div.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); abrir(); }});
+    grid.appendChild(div);
+  });
+}
+
+/* --------- Actividad 7: Balanza (elegir propiedad) --------- */
+function actBalanza(cont, ecuacion){
+  const def = ACTIVIDADES[6];
+  iniciarTemporizador(def.seg, ()=> manejar(null));
+  const mapa = { "a(x+b)=c":"Distributiva","a(x+b)-d=c":"Distributiva","a(bx+c)+d=e":"Distributiva",
+    "(x+b)*a=c":"Conmutativa","a(x+b)+c(x+d)=e":"Asociativa" };
+  const correcta = mapa[ecuacion.tipo] || "Distributiva";
+  const explicaciones = {
+    Distributiva:"Hay un número multiplicando una suma dentro de un paréntesis: se distribuye a cada término.",
+    Conmutativa:"Se puede cambiar el orden de una multiplicación (a·b = b·a) sin alterar el resultado.",
+    Asociativa:"Hay varios términos que se pueden agrupar de distinta forma antes de sumarlos.",
+    Cancelativa:"Sumar o restar el mismo número en ambos lados mantiene la igualdad."
+  };
+  cont.innerHTML = `
+    <div class="balanza-wrap">
+      <svg class="balanza-svg" width="260" height="120" viewBox="0 0 260 120" role="img" aria-label="Balanza en equilibrio representando una ecuación">
+        <line x1="130" y1="10" x2="130" y2="70" stroke="var(--texto)" stroke-width="4"/>
+        <line x1="30" y1="40" x2="230" y2="40" stroke="var(--texto)" stroke-width="4"/>
+        <circle cx="30" cy="40" r="4" fill="var(--texto)"/><circle cx="230" cy="40" r="4" fill="var(--texto)"/>
+        <path d="M10 40 L30 80 L50 80 Z" fill="none" stroke="var(--primario)" stroke-width="3"/>
+        <path d="M210 40 L230 80 L250 80 Z" fill="none" stroke="var(--secundario)" stroke-width="3"/>
+        <rect x="110" y="70" width="40" height="20" fill="var(--acento)"/>
+      </svg>
+    </div>
+    <div class="consigna">Para simplificar <span class="pastilla">${ecuacion.izq} = ${ecuacion.der}</span> sin romper el
+    equilibrio de la balanza, ¿qué propiedad conviene aplicar primero?</div>
+    <div class="grid-tarjetas" id="opsBal" role="radiogroup" aria-label="Opciones de propiedad"></div>
+  `;
+  const ops = cont.querySelector("#opsBal");
+  PROPIEDADES.forEach(p=>{
+    const div = document.createElement("div"); div.className="tarjeta"; div.tabIndex=0; div.setAttribute("role","radio");
+    div.setAttribute("aria-checked","false"); div.textContent=p;
+    const act=()=>manejar(p);
+    div.addEventListener("click",act); div.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();act();}});
+    ops.appendChild(div);
+  });
+  function manejar(elegida){
+    detenerTemporizador();
+    [...ops.children].forEach(el=>{
+      el.setAttribute("aria-disabled","true");
+      if (el.textContent===correcta) el.classList.add("correcta");
+      else if (el.textContent===elegida) el.classList.add("incorrecta");
+    });
+    const ok = elegida===correcta;
+    retro(ok, ok?`¡Correcto! Es la propiedad ${correcta.toLowerCase()}.`:
+      (elegida?`No era ${elegida.toLowerCase()}. Correcta: ${correcta.toLowerCase()}.`:`Se acabó el tiempo. Correcta: ${correcta.toLowerCase()}.`),
+      explicaciones[correcta], "distribucion");
+  }
+}
+
+/* --------- Actividad 8: Reto final (arrastrar y soltar pasos + comprobar) --------- */
+function actReto(cont, ecuacion){
+  const def = ACTIVIDADES[7];
+  iniciarTemporizador(def.seg, ()=> retro(false,"Se acabó el tiempo.",null,"despeje"));
+  cont.innerHTML = `
+    <div class="consigna">Reto final: resolvé <span class="pastilla">${ecuacion.izq} = ${ecuacion.der}</span> completa.
+    Escribí el valor final de x y luego comprobá arrastrando (o seleccionando) la verificación correcta.</div>
+    <div class="campo" style="max-width:260px; margin:0 auto;">
+      <label for="inputRetoX" class="sr-solo">Valor de x</label>
+      <input type="number" id="inputRetoX" placeholder="x = ?">
+    </div>
+    <div class="acciones-fila"><button type="button" id="btnEnviarRetoX">Enviar valor de x</button></div>
+    <div id="zonaComprobacion" class="oculto">
+      <p style="margin-top:16px;"><strong>Ahora comprobá:</strong> seleccioná la verificación correcta.</p>
+      <div class="grid-tarjetas" id="opsComprobacion"></div>
+    </div>
+  `;
+  const input = cont.querySelector("#inputRetoX");
+  input.focus();
+  cont.querySelector("#btnEnviarRetoX").addEventListener("click", enviarX);
+  input.addEventListener("keydown", e=>{ if(e.key==="Enter") enviarX(); });
+
+  function enviarX(){
+    const val = parseInt(input.value,10);
+    if (val !== ecuacion.x){
+      retro(false, `x = ${val} no es correcto.`, `El valor correcto es x = ${ecuacion.x}. Pasos: ${ecuacion.pasos.join(" → ")}`, "despeje");
+      return;
+    }
+    input.disabled = true;
+    cont.querySelector("#btnEnviarRetoX").disabled = true;
+    cont.querySelector("#zonaComprobacion").classList.remove("oculto");
+    const correcta = `Sustituyendo x=${ecuacion.x}, ambos lados dan el mismo valor entero positivo.`;
+    const opciones = [correcta, "Sustituyendo x, los lados dan valores distintos.", "No se puede comprobar esta ecuación."].sort(()=>rng()-0.5);
+    const ops = cont.querySelector("#opsComprobacion");
+    opciones.forEach(op=>{
+      const div = document.createElement("div"); div.className="tarjeta"; div.tabIndex=0; div.setAttribute("role","button");
+      div.textContent = op;
+      const act=()=>{
+        const ok = op===correcta;
+        [...ops.children].forEach(el=>el.setAttribute("aria-disabled","true"));
+        div.classList.add(ok?"correcta":"incorrecta");
+        retro(ok, ok?`¡Resolviste todo el reto! x = ${ecuacion.x}.`:"Esa comprobación no es correcta.",
+          "Resolución completa: " + ecuacion.pasos.join(" → "), "despeje");
+      };
+      div.addEventListener("click",act); div.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();act();}});
+      ops.appendChild(div);
+    });
+  }
+}
+
+/* =====================================================================
+   BLOQUE 8: NAVEGACIÓN, PISTAS, RESÚMENES
+   ===================================================================== */
+$("btnSiguiente").addEventListener("click", ()=>{ estado.problemaIndex++; siguienteProblema(); });
+$("btnOtroProblema").addEventListener("click", ()=>{ $("panelRetro").classList.add("oculto"); crearActividad(ACTIVIDADES[estado.actividadIndex].id); });
+$("btnPistaCorta").addEventListener("click", ()=>{
+  const eq = estado.datosActuales && estado.datosActuales.ecuacion; if(!eq) return;
+  alert("💡 Sugerencia corta: " + eq.pasos[0]);
+});
+$("btnMostrarPaso").addEventListener("click", ()=>{
+  const eq = estado.datosActuales && estado.datosActuales.ecuacion; if(!eq) return;
+  alert("📖 Pasos:\n\n" + eq.izq + " = " + eq.der + "\n\n" + eq.pasos.join("\n"));
+});
+
+function mostrarResumenActividad(){
+  const def = ACTIVIDADES[estado.actividadIndex];
+  if (estado.tiemposPorActividad[estado.actividadIndex]) estado.tiemposPorActividad[estado.actividadIndex].fin = Date.now();
+  const erroresOrd = Object.entries(estado.erroresPorTipo).sort((a,b)=>b[1]-a[1]);
+  const recTexto = { signos:"Practicar ejercicios con paréntesis precedidos de signo negativo.",
+    distribucion:"Repasar la propiedad distributiva multiplicando por cada término del paréntesis.",
+    despeje:"Practicar el orden de pasos para despejar la incógnita." };
+  const recomendaciones = [];
+  if (erroresOrd.length) recomendaciones.push(recTexto[erroresOrd[0][0]] || "Seguir practicando ejercicios similares.");
+  recomendaciones.push("Revisar la explicación completa de los ejercicios con dudas.");
+  recomendaciones.push("Probar el modo accesible si se necesita más tiempo.");
+
+  $("tituloResumenAct").textContent = "Resumen: " + def.nombre;
+  $("cuerpoResumenAct").innerHTML = `
+    <p>Puntos acumulados: <strong>${estado.puntos}</strong> — Aciertos: <strong>${estado.aciertos}</strong> — Errores: <strong>${estado.errores}</strong></p>
+    <p><strong>Para el alumno:</strong> ¡seguí así! Cada actividad te ayuda a dominar mejor la distributiva.</p>
+    <p><strong>Recomendaciones:</strong></p><ul>${recomendaciones.slice(0,3).map(r=>`<li>${r}</li>`).join("")}</ul>
+  `;
+  estado.historialActividades.push({ actividad:def.nombre, puntos:estado.puntos, aciertos:estado.aciertos, errores:estado.errores,
+    duracionSeg: estado.tiemposPorActividad[estado.actividadIndex] ? Math.round((estado.tiemposPorActividad[estado.actividadIndex].fin - estado.tiemposPorActividad[estado.actividadIndex].inicio)/1000) : null });
+  $("zonaJuego").classList.add("oculto"); $("pantallaResumenAct").classList.remove("oculto");
+  guardarProgreso();
+}
+$("btnContinuarSiguienteAct").addEventListener("click", ()=>{
+  $("pantallaResumenAct").classList.add("oculto"); $("zonaJuego").classList.remove("oculto");
+  iniciarActividad(estado.actividadIndex+1);
+});
+
+function generarReporteJSON(){
+  const totalProblemas = estado.aciertos + estado.errores;
+  return {
+    fecha: new Date().toISOString(),
+    modo: estado.modo,
+    dificultad: CONFIG.dificultad,
+    puntosTotales: estado.puntos,
+    aciertos: estado.aciertos,
+    errores: estado.errores,
+    porcentajeAciertos: totalProblemas ? Math.round((estado.aciertos/totalProblemas)*100) : 0,
+    erroresPorTipo: estado.erroresPorTipo,
+    historialActividades: estado.historialActividades,
+    duracionSesionSeg: estado.inicioSesion ? Math.round((Date.now()-estado.inicioSesion)/1000) : null
+  };
+}
+
+function mostrarInformeFinal(){
+  detenerTemporizador();
+  $("zonaJuego").classList.add("oculto"); $("pantallaResumenAct").classList.add("oculto"); $("pantallaFinal").classList.remove("oculto");
+  const totalProblemas = estado.aciertos + estado.errores;
+  const pct = totalProblemas ? Math.round((estado.aciertos/totalProblemas)*100) : 0;
+  const erroresOrd = Object.entries(estado.erroresPorTipo).sort((a,b)=>b[1]-a[1]);
+  const nombres = { signos:"manejo de signos", distribucion:"propiedad distributiva", despeje:"despeje de la incógnita" };
+  const listaErr = erroresOrd.map(([k,v])=>`${nombres[k]||k} (${v})`).join(", ") || "sin errores frecuentes";
+  const recomendaciones = [];
+  if (erroresOrd[0]) recomendaciones.push("Reforzar: " + (nombres[erroresOrd[0][0]]||erroresOrd[0][0]) + ".");
+  recomendaciones.push("Repetir actividades con menor puntaje en modo accesible.");
+  recomendaciones.push("Consultar con el docente los ejercicios con paréntesis y signos.");
+  $("cuerpoFinal").innerHTML = `
+    <p>Puntaje total: <strong>${estado.puntos} puntos</strong></p>
+    <p>Aciertos: <strong>${estado.aciertos}</strong> de <strong>${totalProblemas}</strong> (${pct}%)</p>
+    <p>Errores frecuentes: <strong>${listaErr}</strong></p>
+    <p><strong>Recomendaciones:</strong></p><ul>${recomendaciones.map(r=>`<li>${r}</li>`).join("")}</ul>
+  `;
+  borrarProgreso();
+}
+$("btnDescargarJSON").addEventListener("click", descargarReporte);
+function descargarReporte(){
+  const datos = generarReporteJSON();
+  const blob = new Blob([JSON.stringify(datos,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "reporte_balanza_distributiva_" + Date.now() + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+$("btnNuevaSesion").addEventListener("click", ()=>{
+  reiniciarEstado(); $("pantallaFinal").classList.add("oculto"); $("pantallaInicio").classList.remove("oculto");
+});
+
+/* =====================================================================
+   BLOQUE 9: INICIO DE SESIÓN / MODOS / CONTINUAR
+   ===================================================================== */
+function reiniciarEstado(){
+  estado.actividadIndex=0; estado.problemaIndex=0; estado.puntos=0; estado.aciertos=0; estado.errores=0;
+  estado.erroresPorTipo={}; estado.historialActividades=[]; estado.tiemposPorActividad=[]; estado.inicioSesion=Date.now();
+  $("marcadorPuntos").textContent="Puntos: 0"; borrarProgreso();
+}
+document.querySelectorAll(".tarjeta-modo").forEach(t=>{
+  const activar = ()=>{
+    estado.modo = t.dataset.modo;
+    if (estado.modo === "accesible"){
+      document.documentElement.style.fontSize = "22px";
+      document.body.style.setProperty("--toque","56px");
+      $("subtituloModo").textContent = "Modo accesible: sin presión de tiempo, toque para seleccionar y colocar.";
+    } else {
+      $("subtituloModo").textContent = "Modo estándar: arrastrar y soltar con cronómetro.";
+    }
+    reiniciarEstado();
+    $("pantallaInicio").classList.add("oculto"); $("zonaJuego").classList.remove("oculto");
+    iniciarActividad(0);
+  };
+  t.addEventListener("click", activar);
+  t.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); activar(); }});
+});
+$("btnContinuarSesion").addEventListener("click", ()=>{
+  const d = cargarProgreso(); if(!d) return;
+  Object.assign(estado, d); Object.assign(CONFIG, d.CONFIG||{});
+  $("marcadorPuntos").textContent = "Puntos: " + estado.puntos;
+  $("pantallaInicio").classList.add("oculto"); $("zonaJuego").classList.remove("oculto");
+  iniciarActividad(estado.actividadIndex);
+});
+(function revisarGuardado(){
+  const d = cargarProgreso();
+  if (d && (d.puntos>0 || d.actividadIndex>0)){
+    $("textoContinuarInicio").classList.remove("oculto");
+    $("btnContinuarSesion").classList.remove("oculto");
+  }
+})();
+
+/* =====================================================================
+   BLOQUE 10: MODO PROFESOR (protegido por clave simple)
+   ===================================================================== */
+$("btnProfesor").addEventListener("click", ()=>{
+  $("fondoProfesor").classList.remove("oculto");
+  $("pasoClave").classList.remove("oculto"); $("panelProfesorContenido").classList.add("oculto");
+  $("inputClave").value=""; $("inputClave").focus();
+});
+$("btnCancelarClave").addEventListener("click", ()=> $("fondoProfesor").classList.add("oculto"));
+$("btnCerrarProfesor").addEventListener("click", ()=> $("fondoProfesor").classList.add("oculto"));
+$("fondoProfesor").addEventListener("click", e=>{ if(e.target.id==="fondoProfesor") $("fondoProfesor").classList.add("oculto"); });
+$("btnValidarClave").addEventListener("click", ()=>{
+  if ($("inputClave").value === CONFIG.claveProfesor){
+    $("pasoClave").classList.add("oculto"); $("panelProfesorContenido").classList.remove("oculto");
+    $("selectDificultadP").value = CONFIG.dificultad;
+    $("inputProblemasP").value = CONFIG.problemasPorActividad;
+    $("inputDuracionP").value = CONFIG.duracionObjetivoMin;
+    $("checkModoPracticoP").checked = CONFIG.modoPractico;
+  } else {
+    alert("Clave incorrecta.");
+  }
+});
+$("btnAplicarProfesor").addEventListener("click", ()=>{
+  CONFIG.dificultad = $("selectDificultadP").value;
+  CONFIG.problemasPorActividad = Math.max(2, Math.min(8, parseInt($("inputProblemasP").value,10)||4));
+  CONFIG.duracionObjetivoMin = Math.max(15, Math.min(60, parseInt($("inputDuracionP").value,10)||40));
+  CONFIG.modoPractico = $("checkModoPracticoP").checked;
+  const semillaTexto = $("inputSemillaP").value.trim();
+  rng = crearGeneradorAleatorio(semillaTexto ? textoASemilla(semillaTexto) : (Date.now()%1000000));
+  $("fondoProfesor").classList.add("oculto");
+  reiniciarEstado();
+  $("zonaJuego").classList.add("oculto"); $("pantallaResumenAct").classList.add("oculto"); $("pantallaFinal").classList.add("oculto");
+  $("pantallaInicio").classList.remove("oculto");
+  $("textoContinuarInicio").classList.add("oculto"); $("btnContinuarSesion").classList.add("oculto");
+  anunciar("Configuración aplicada. Sesión reiniciada.");
+});
+$("btnVerReporteProfesor").addEventListener("click", ()=>{
+  const datos = generarReporteJSON();
+  const zona = $("zonaReporteProfesor");
+  zona.innerHTML = `<h3>Vista técnica del reporte</h3>
+    <table class="tabla-reporte">
+      <tr><th>Puntos</th><td>${datos.puntosTotales}</td></tr>
+      <tr><th>Aciertos</th><td>${datos.aciertos}</td></tr>
+      <tr><th>Errores</th><td>${datos.errores}</td></tr>
+      <tr><th>% aciertos</th><td>${datos.porcentajeAciertos}%</td></tr>
+      <tr><th>Errores por tipo</th><td>${JSON.stringify(datos.erroresPorTipo)}</td></tr>
+    </table>
+    <div class="acciones-fila"><button type="button" id="btnDescargarDesdeProfesor">⬇ Descargar JSON</button></div>`;
+  zona.querySelector("#btnDescargarDesdeProfesor").addEventListener("click", descargarReporte);
+});
+
+/* =====================================================================
+   BLOQUE 11: CONTROLES DE ACCESIBILIDAD GLOBALES
+   ===================================================================== */
+let tamFuente = 18;
+$("btnFuenteMas").addEventListener("click", ()=>{ tamFuente=Math.min(30,tamFuente+2); document.documentElement.style.fontSize=tamFuente+"px"; });
+$("btnFuenteMenos").addEventListener("click", ()=>{ tamFuente=Math.max(14,tamFuente-2); document.documentElement.style.fontSize=tamFuente+"px"; });
+let toqueActual = 44;
+$("btnToqueMas").addEventListener("click", ()=>{ toqueActual=Math.min(64,toqueActual+6); document.body.style.setProperty("--toque",toqueActual+"px"); });
+const temas = ["claro","oscuro","contraste"]; let temaIdx=0;
+$("btnTema").addEventListener("click", ()=>{ temaIdx=(temaIdx+1)%temas.length; document.body.setAttribute("data-tema",temas[temaIdx]); anunciar("Tema: "+temas[temaIdx]); });
+$("btnSonido").addEventListener("click", ()=>{
+  estado.sonido = !estado.sonido; $("btnSonido").textContent = estado.sonido ? "🔊" : "🔇";
+  $("btnSonido").setAttribute("aria-pressed", estado.sonido);
+});
+
+/* Preferencia de reducción de movimiento del sistema operativo */
+if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+  document.body.setAttribute("data-movimiento","reducido");
+}
+
+/* =====================================================================
+   BLOQUE 12: ATAJOS DE TECLADO GLOBALES
+   ===================================================================== */
+document.addEventListener("keydown", e=>{
+  if ((e.key==="ArrowRight"||e.key.toLowerCase()==="n") && !$("panelRetro").classList.contains("oculto")) $("btnSiguiente").click();
+  if (e.key.toLowerCase()==="p" && !$("zonaJuego").classList.contains("oculto")) $("btnPausa").click();
+});
+
+estado.inicioSesion = Date.now();
+</script>
+</body>
+</html>
